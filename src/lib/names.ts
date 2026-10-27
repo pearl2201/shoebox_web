@@ -17,3 +17,24 @@ export function uniqueName(base: string, used: Map<string, number>): string {
   used.set(base, count + 1);
   return count === 0 ? base : `${base}_${count + 1}`;
 }
+
+/** Timestamped file name for images pasted from the clipboard. */
+export function clipboardFileName(mimeType: string, index = 0): string {
+  const extension =
+    mimeType === 'image/jpeg'
+      ? 'jpg'
+      : mimeType === 'image/webp'
+        ? 'webp'
+        : mimeType === 'image/gif'
+          ? 'gif'
+          : 'png';
+
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(
+    now.getHours(),
+  )}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+  return `clipboard-${stamp}${index > 0 ? `-${index + 1}` : ''}.${extension}`;
+}
+

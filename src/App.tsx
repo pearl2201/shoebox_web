@@ -3,16 +3,31 @@ import { Header } from './components/Header';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ToolRail } from './components/ToolRail';
 import { Workbench, type Job } from './components/Workbench';
-import { copyText } from './lib/clipboard';
+import { copyText, readClipboardImage } from './lib/clipboard';
 import {
   chooseOutputDirectory,
   getOutputDirectoryName,
   saveOutputs,
   supportsDirectoryPicker,
 } from './lib/output';
+import { clipboardFileName } from './lib/names';
 import { loadSettings, resetSettings, saveSettings } from './lib/presets';
 import { toolById, tools } from './tools/registry';
 import type { Settings, ToolResult } from './tools/types';
+
+function mergeFiles(previous: File[], incoming: File[]): File[] {
+  const merged = [...previous];
+  for (const file of incoming) {
+    const exists = merged.some(
+      (candidate) =>
+        candidate.name === file.name &&
+        candidate.size === file.size &&
+        candidate.lastModified === file.lastModified,
+    );
+    if (!exists) merged.push(file);
+  }
+  return merged;
+}
 
 export default function App() {
   const [activeId, setActiveId] = useState(tools[0].id);
@@ -70,6 +85,52 @@ export default function App() {
     };
   }, []);
 
+  // Paste images straight from the clipboard (⌘V / Ctrl+V) for image tools.
+  useEffect(() => {
+    if (tool.accepts !== 'images') return;
+
+    function onPaste(event: ClipboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const items = event.clipboardData?.items;
+      if (!items) return;
+
+      const pasted: File[] = [];
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        if (item.kind !== 'file' || !item.type.startsWith('image/')) continue;
+        const file = item.getAsFile();
+        if (file) {
+          pasted.push(
+            new File([file], clipboardFileName(item.type, pasted.length), {
+              type: file.type || 'image/png',
+            }),
+          );
+        }
+      }
+
+      if (pasted.length === 0) return;
+
+      event.preventDefault();
+      setFiles((previous) => mergeFiles(previous, pasted));
+      setSaveMessage(
+        `Pasted ${pasted.length} image${pasted.length === 1 ? '' : 's'} from the clipboard.`,
+      );
+    }
+
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [tool.accepts]);
+
   function clearPreview() {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
@@ -87,19 +148,7 @@ export default function App() {
   }
 
   function addFiles(incoming: File[]) {
-    setFiles((previous) => {
-      const merged = [...previous];
-      for (const file of incoming) {
-        const exists = merged.some(
-          (candidate) =>
-            candidate.name === file.name &&
-            candidate.size === file.size &&
-            candidate.lastModified === file.lastModified,
-        );
-        if (!exists) merged.push(file);
-      }
-      return merged;
-    });
+    setFiles((previous) => mergeFiles(previous, incoming));
     setSaveMessage(null);
   }
 
@@ -113,6 +162,22 @@ export default function App() {
     setSaveMessage(null);
     setJob({ status: 'idle', message: '' });
     clearPreview();
+  }
+
+  async function pasteImage() {
+    if (tool.accepts !== 'images') return;
+
+    const blob = await readClipboardImage();
+    if (!blob) {
+      setSaveMessage('No image in the clipboard — copy an image, or press ⌘V / Ctrl+V.');
+      return;
+    }
+
+    const file = new File([blob], clipboardFileName(blob.type, 0), {
+      type: blob.type || 'image/png',
+    });
+    setFiles((previous) => mergeFiles(previous, [file]));
+    setSaveMessage('Pasted an image from the clipboard.');
   }
 
   function updateSettings(next: Settings) {
@@ -219,6 +284,7 @@ export default function App() {
           onFiles={addFiles}
           onRemove={removeFile}
           onClear={clearFiles}
+          onPasteImage={pasteImage}
           onRun={run}
           onSave={saveResults}
           onCopyText={copyResultText}

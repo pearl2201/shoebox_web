@@ -44,6 +44,14 @@ export function Icon({ name, size = 20, className }: IconProps) {
           <circle cx="3.5" cy="18" r="1" fill="currentColor" stroke="none" />
         </svg>
       );
+    case 'paste':
+      return (
+        <svg {...common}>
+          <rect x="8" y="3" width="8" height="4" rx="1.5" />
+          <path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2" />
+          <path d="M9 12h6M9 16h4" />
+        </svg>
+      );
     case 'font':
       return (
         <svg {...common}>

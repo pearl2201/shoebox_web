@@ -5,6 +5,9 @@ A local-first sprite and texture toolbox for game developers — a browser rewri
 
 Everything runs in the browser: files are decoded, packed and encoded locally. Nothing is uploaded.
 
+Drop files, use the file picker, or **paste an image straight from the clipboard** (`⌘V` / `Ctrl+V`,
+or the *Paste image* button). Pasted images get a timestamped name like `clipboard-20261028-153012.png`.
+
 ## Status
 
 Working build with all seven scoped tools.

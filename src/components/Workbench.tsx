@@ -18,6 +18,7 @@ interface WorkbenchProps {
   onFiles: (files: File[]) => void;
   onRemove: (index: number) => void;
   onClear: () => void;
+  onPasteImage: () => void;
   onRun: () => void;
   onSave: () => void;
   onCopyText: () => void;
@@ -38,6 +39,7 @@ export function Workbench({
   onFiles,
   onRemove,
   onClear,
+  onPasteImage,
   onRun,
   onSave,
   onCopyText,
@@ -93,6 +95,11 @@ export function Workbench({
           {tool.accepts === 'images' ? 'Drop images here' : 'Drop files here'}
         </strong>
         <span>or click to browse — nothing leaves your machine</span>
+        {tool.accepts === 'images' && (
+          <span className="dropzone-paste">
+            or paste with <kbd>⌘/Ctrl</kbd> + <kbd>V</kbd>
+          </span>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -147,6 +154,13 @@ export function Workbench({
           {busy ? <span className="spinner" /> : <Icon name="play" size={15} />}
           {busy ? 'Working…' : `Run ${tool.label}`}
         </button>
+
+        {tool.accepts === 'images' && (
+          <button type="button" className="btn ghost" onClick={onPasteImage} disabled={busy}>
+            <Icon name="paste" size={16} />
+            Paste image
+          </button>
+        )}
 
         {result && result.files.length > 0 && (
           <button type="button" className="btn ghost" onClick={onSave}>
