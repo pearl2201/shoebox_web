@@ -1,0 +1,5 @@
+# Cloudflare Pages project configuration
+# Used by `wrangler pages deploy` and by the Pages Git integration.
+name = "shoebox"
+compatibility_date = "2025-10-01"
+pages_build_output_dir = "dist"

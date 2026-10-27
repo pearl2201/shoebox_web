@@ -1,0 +1,29 @@
+{
+  "name": "shoebox-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local-first sprite toolbox for game developers — a browser rewrite inspired by ShoeBox",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fixtures": "node scripts/make-fixtures.mjs"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "gifuct-js": "^2.1.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "vitest": "^3.0.5"
+  }
+}

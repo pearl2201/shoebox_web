@@ -1,0 +1,3 @@
+[submodule "shoebox_as"]
+	path = shoebox_as
+	url = https://github.com/renderhjs/shoebox.git
