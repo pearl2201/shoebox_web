@@ -82,6 +82,19 @@ npm run build
 npx wrangler pages deploy dist --project-name shoebox
 ```
 
+### Option C — Deploy from GitHub Actions (manual)
+
+`.github/workflows/deploy-cloudflare.yml` is a manually triggered workflow for teams that prefer not to
+connect the repository in the Cloudflare dashboard. Add these repository secrets first:
+
+| Secret | Value |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Token with **Cloudflare Pages: Edit** |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID from the Cloudflare dashboard |
+
+Then run **Actions → Deploy to Cloudflare Pages → Run workflow**. It builds, tests and uploads `dist/`
+to the `shoebox` Pages project.
+
 ### Custom domain `shoebox.lacgame.com`
 
 1. Pages project → **Custom domains → Set up a custom domain**.

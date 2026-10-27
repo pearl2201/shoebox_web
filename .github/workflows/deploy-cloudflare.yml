@@ -1,0 +1,50 @@
+name: Deploy to Cloudflare Pages
+
+# Optional manual deploy. The Cloudflare Git integration is the recommended path;
+# this workflow is for teams that want to deploy from GitHub Actions instead.
+#
+# Required repository secrets:
+#   CLOUDFLARE_API_TOKEN   — token with "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  — account id (Cloudflare dashboard → Workers & Pages)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Cloudflare Pages branch (use your production branch name)
+        required: false
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=shoebox --branch=${{ inputs.branch }}
