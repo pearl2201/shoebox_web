@@ -1,5 +1,21 @@
-# Cloudflare Pages project configuration
-# Used by `wrangler pages deploy` and by the Pages Git integration.
+# Cloudflare configuration — works for both deploy flavours.
+#
+# 1. Pages CLI / GitHub Action:
+#      npx wrangler pages deploy dist --project-name=shoebox
+#    (the output directory is passed on the command line, so no
+#     `pages_build_output_dir` key is needed here)
+#
+# 2. Workers static assets — what the dashboard "Connect to Git" /
+#    Workers Builds flow runs for you:
+#      npx wrangler deploy
+#    which needs an assets directory, otherwise it fails with
+#    "Missing entry-point to Worker script or to assets directory".
+#
+# Do not add `pages_build_output_dir` next to `[assets]`: `wrangler deploy`
+# then warns that it is deploying a Pages project and stops for confirmation.
+
 name = "shoebox"
 compatibility_date = "2025-10-01"
-pages_build_output_dir = "dist"
+
+[assets]
+directory = "./dist"

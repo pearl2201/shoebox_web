@@ -73,7 +73,10 @@ Notes:
 
 5. Save and deploy. Every branch/PR gets a preview URL; `main` deploys to production.
 
-`wrangler.toml` already declares `pages_build_output_dir = "dist"` for the CLI path.
+`wrangler.toml` declares `[assets] directory = "./dist"` so the same repository also deploys through
+`wrangler deploy` (see Option D). The Pages **Build output directory** is set in the dashboard — the
+config deliberately does *not* use `pages_build_output_dir`, because combining the two makes
+`wrangler deploy` abort with a “you have run `wrangler deploy` on a Pages project” confirmation.
 
 ### Option B — Direct upload
 
@@ -94,6 +97,30 @@ connect the repository in the Cloudflare dashboard. Add these repository secrets
 
 Then run **Actions → Deploy to Cloudflare Pages → Run workflow**. It builds, tests and uploads `dist/`
 to the `shoebox` Pages project.
+
+### Option D — Workers static assets (`wrangler deploy`)
+
+Cloudflare's newer "Connect to Git" flow under **Workers & Pages** builds a **Worker with static
+assets**, and its build command is `npx wrangler deploy` — not `npm run build`. That is why
+`wrangler.toml` carries the assets block:
+
+```toml
+name = "shoebox"
+compatibility_date = "2025-10-01"
+
+[assets]
+directory = "./dist"
+```
+
+With that block, `npx wrangler deploy` uploads `dist/` as static assets. `public/_headers` and
+`public/robots.txt` are published too (`_headers` is honoured by Workers static assets as well).
+
+To use this flow, set the build command to `npm run build && npx wrangler deploy` (or just
+`npx wrangler deploy` if the dashboard already runs the install/build for you) and make sure the
+build produces `dist/` before the deploy step runs.
+
+Prefer Option A when you want the `*.pages.dev` URL and free custom-domain support; both options can
+exist side by side, but only one of them should own `shoebox.lacgame.com`.
 
 ### Custom domain `shoebox.lacgame.com`
 
@@ -148,6 +175,8 @@ GitHub Pages ignores `_headers`; the file is simply published alongside the stat
 | `Resource not accessible by integration` from an older run | The old workflow tried to create the Pages site with `GITHUB_TOKEN`; that is not allowed. The current workflow detects the state instead of failing. |
 | GitHub Pages shows the README instead of the app | Pages source is still “Deploy from a branch”. Switch it to “GitHub Actions”. |
 | Blank page on a sub-path | Keep the Vite base relative (`base: './'`). Absolute `/assets/...` breaks project pages. |
+| `Missing entry-point to Worker script or to assets directory` | The build ran `wrangler deploy` (Workers static assets) while `wrangler.toml` only had Pages settings. Fixed by the `[assets] directory = "./dist"` block — rebuild after pulling. If you actually want a Pages project, set the build command to `npm run build` and the output directory to `dist` instead. |
+| `wrangler deploy` asks “Are you sure … Pages project” | `pages_build_output_dir` and `[assets]` are both in `wrangler.toml`. Keep only `[assets]` and pass `dist` on the `wrangler pages deploy` command line. |
 | Cloudflare build fails on Node APIs | Add `NODE_VERSION=22` to the Pages environment variables. |
 | Custom domain stuck on “Verifying” | Check the `CNAME shoebox → shoebox.pages.dev` record and that the zone is active. |
 | `wrangler` uploads nothing | Build first (`npm run build`) and point it at `dist`. |
