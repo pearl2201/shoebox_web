@@ -853,7 +853,8 @@ kbd {
 
 .switch.on .knob {
   transform: translateX(18px);
-  background: var(--accent);
+  background: #f2fff7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
 }
 
 .preset-row {
