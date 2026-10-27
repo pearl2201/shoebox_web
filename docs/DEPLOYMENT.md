@@ -16,7 +16,8 @@ GitHub Pages project path (`/repo/`). There is no client-side router, so no 404 
 ## 1. GitHub Pages
 
 The workflow in `.github/workflows/deploy-pages.yml` runs on every push to `main` (and manually via
-`workflow_dispatch`) and deploys `dist/` with the official Pages actions.
+`workflow_dispatch`). It always runs **install → test → build**; the deploy steps only run when Pages
+is enabled.
 
 Setup:
 
@@ -27,14 +28,18 @@ Setup:
 
 For this repository that is **https://pearl2201.github.io/shoebox_web/**.
 
-The workflow calls `actions/configure-pages` with `enablement: true`, but the default `GITHUB_TOKEN`
-**cannot create the Pages site** (`Resource not accessible by integration`). A repository admin must
-enable Pages once:
+### Why the workflow is green before Pages exists
 
-> **Settings → Pages → Build and deployment → Source: GitHub Actions**
+`GITHUB_TOKEN` **cannot create a Pages site** (`Resource not accessible by integration` — the REST API
+requires repository-admin rights). Instead of failing, the workflow calls
+`GET /repos/{owner}/{repo}/pages`:
 
-After that, re-run the workflow (**Actions → Deploy to GitHub Pages → Re-run all jobs**) or push a
-commit. The site will be available at `https://pearl2201.github.io/shoebox_web/`.
+* **HTTP 200** → Pages is enabled → configure, upload artifact, deploy.
+* **anything else** → a notice + job summary is written, the deploy steps are skipped, and the run
+  stays green. Build and unit tests still gate the commit.
+
+So the only manual step is enabling Pages once. After that every push to `main` publishes
+automatically.
 
 Notes:
 
@@ -107,7 +112,7 @@ GitHub Pages ignores `_headers`; the file is simply published alongside the stat
 
 ## 4. Release checklist
 
-1. `npm test` — unit tests for packer, alpha utilities, hull tracing and tile-grid detection.
+1. `npm test` — unit tests for packer, alpha utilities, hull tracing, tile-grid detection and bitmap fonts.
 2. `npm run build` — type-check plus production bundle.
 3. Smoke test `npm run preview`:
    * pack two images → atlas + metadata;
@@ -115,6 +120,7 @@ GitHub Pages ignores `_headers`; the file is simply published alongside the stat
    * convert an animated GIF;
    * detect tiles;
    * trace a hull;
+   * build a bitmap font (BMFont text/XML) with preview;
    * save to a chosen folder and via ZIP download.
 4. Push to `main` → GitHub Pages workflow runs, Cloudflare Pages builds both preview and production.
 5. Verify both URLs load with assets (check the Network tab for `./assets/...` requests).
@@ -125,7 +131,8 @@ GitHub Pages ignores `_headers`; the file is simply published alongside the stat
 
 | Symptom | Cause / fix |
 |---|---|
-| `HttpError: Resource not accessible by integration` in *Configure Pages* | Pages is not enabled yet. **Settings → Pages → Source: GitHub Actions**, then re-run the job. |
+| Workflow is green but nothing is published | Expected while Pages is disabled — check the run summary notice. **Settings → Pages → Source: GitHub Actions**, then re-run. |
+| `Resource not accessible by integration` from an older run | The old workflow tried to create the Pages site with `GITHUB_TOKEN`; that is not allowed. The current workflow detects the state instead of failing. |
 | GitHub Pages shows the README instead of the app | Pages source is still “Deploy from a branch”. Switch it to “GitHub Actions”. |
 | Blank page on a sub-path | Keep the Vite base relative (`base: './'`). Absolute `/assets/...` breaks project pages. |
 | Cloudflare build fails on Node APIs | Add `NODE_VERSION=22` to the Pages environment variables. |

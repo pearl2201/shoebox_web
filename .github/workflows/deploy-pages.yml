@@ -17,15 +17,17 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      pages_enabled: ${{ steps.pages.outputs.enabled }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # `shoebox_as/` is only a reference checkout, not needed for the build.
           submodules: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -39,21 +41,51 @@ jobs:
       - name: Build
         run: npm run build
 
+      # GITHUB_TOKEN cannot create a Pages site (`Resource not accessible by
+      # integration`). Detect the state and skip gracefully until an admin turns
+      # on Settings → Pages → Source: GitHub Actions.
+      - name: Check GitHub Pages
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages")
+
+          if [ "$status" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "GitHub Pages is enabled."
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=GitHub Pages is not enabled::Open Settings → Pages and set Source to \"GitHub Actions\", then re-run this workflow."
+            {
+              echo "### GitHub Pages is not enabled (HTTP $status)"
+              echo ""
+              echo "Build and tests passed. To publish this build:"
+              echo ""
+              echo "1. Open **Settings → Pages**."
+              echo "2. Set **Build and deployment → Source** to **GitHub Actions**."
+              echo "3. Re-run this workflow (or push a commit)."
+              echo ""
+              echo "Until then the deploy steps are skipped and this run stays green."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          # Tries to enable Pages automatically. The default GITHUB_TOKEN cannot
-          # create the Pages site, so a repository admin must set
-          # Settings → Pages → Source = "GitHub Actions" once.
-          enablement: true
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.enabled == 'true'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
     needs: build
+    if: needs.build.outputs.pages_enabled == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -61,4 +93,4 @@ jobs:
     steps:
       - name: Deploy
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
