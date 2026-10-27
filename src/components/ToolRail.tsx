@@ -37,8 +37,8 @@ export function ToolRail({ activeId, onSelect }: ToolRailProps) {
         <span className="rail-title">Roadmap</span>
         <ul className="rail-soon">
           <li>Multi-page atlases</li>
+          <li>Font kerning editor</li>
           <li>Worker offload</li>
-          <li>Batch queue</li>
         </ul>
         <p className="rail-note">Everything runs locally. No uploads.</p>
       </div>

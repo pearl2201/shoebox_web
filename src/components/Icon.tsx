@@ -44,6 +44,14 @@ export function Icon({ name, size = 20, className }: IconProps) {
           <circle cx="3.5" cy="18" r="1" fill="currentColor" stroke="none" />
         </svg>
       );
+    case 'font':
+      return (
+        <svg {...common}>
+          <path d="M5.5 19L12 5l6.5 14" />
+          <path d="M8 14.5h8" />
+          <path d="M3 21h18" strokeDasharray="2 3" />
+        </svg>
+      );
     case 'animation':
       return (
         <svg {...common}>

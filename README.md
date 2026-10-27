@@ -7,12 +7,13 @@ Everything runs in the browser: files are decoded, packed and encoded locally. N
 
 ## Status
 
-Working build with all six scoped tools.
+Working build with all seven scoped tools.
 
 | Tool | State |
 |---|---|
 | **Pack Sprites** | Implemented — trim, padding, power-of-two, duplicate merge, Phaser / Unity-TexturePacker / Godot / CSS / text metadata |
 | **Slice Sprites** | Implemented — alpha blob detection, contained-blob merge, PNG export, JSON manifest |
+| **Bitmap Font** | Implemented — glyph slicing, vertical part merging, per-row baseline detection, BMFont text/XML/JSON + live text preview ([details](docs/BITMAP_FONT.md)) |
 | **Ani 2 Sheet** | Implemented — animated GIF → spritesheet or frame sequence, shared alpha trim, frame timing metadata |
 | **Extract Tiles** | Implemented — grid-offset detection, unique tile set, tile map JSON |
 | **Sprite Hull** | Implemented — outline / convex hull, JSON / Unity C# / Godot output |

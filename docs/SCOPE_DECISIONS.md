@@ -19,6 +19,7 @@
 |---|---|---|
 | **Pack Sprites** | **Keep — flagship** | Trim, padding, power-of-two, duplicate merge, Unity/Godot/Phaser metadata |
 | **Slice Sprites** | **Keep** | Alpha blob detection, merge contained, baseline alignment later |
+| **Bitmap Font** | **Keep — new** | Glyph slicing → BMFont atlas (text / XML / JSON), per-row baseline, vertical part merge, live preview |
 | **Ani 2 Sheet** | **Keep (GIF only)** | SWF path removed |
 | **Extract Tiles** | **Keep** | Tile grid detection + unique tile bank |
 | **Sprite Hull** | **Keep + improve** | Must export polygon points (legacy had no export) |
@@ -44,3 +45,4 @@
 * No uploads, no accounts, no analytics.
 * No folder watching.
 * No native "write next to source" (folder handle + ZIP fallback instead).
+* No kerning-pair editor or multi-page fonts (see `docs/BITMAP_FONT.md` → Limitations).

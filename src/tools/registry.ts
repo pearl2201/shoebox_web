@@ -1,4 +1,5 @@
 import { ani2Sheet } from './ani2Sheet';
+import { bitmapFont } from './bitmapFont';
 import { extractTiles } from './extractTiles';
 import { listFiles } from './listFiles';
 import { packSprites } from './packSprites';
@@ -9,6 +10,7 @@ import type { ToolDef } from './types';
 export const tools: ToolDef[] = [
   packSprites,
   sliceSprites,
+  bitmapFont,
   ani2Sheet,
   extractTiles,
   spriteHull,

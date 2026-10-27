@@ -128,6 +128,7 @@ This is a direct, typed evolution of `registerListenEventGetData` + `PluginManag
 |---|---|---|---|
 | **Pack Sprites** | Port `build_tree` + binary-search canvas sizing to TS; `ImageData` trim; `@jsquash/png` or canvas encode; template engine for XML/CSS/JSON | Medium | Keep duplicate detection (`pixelmatch`-style diff on premultiplied-off pixels) |
 | **Slice Sprites** | Scanline flood fill on `Uint32Array` + label pass; baseline clustering | Medium | O(n) in a worker; big images fine |
+| **Bitmap Font** | Blob detection + vertical part merge + per-row baseline + BMFont text/XML/JSON writers | Medium | Implemented — see `docs/BITMAP_FONT.md` |
 | **Ani 2 Sheet (GIF)** | `ImageDecoder` (WebCodecs) for frames, `gifuct-js` fallback | Easy | `ImageDecoder` gives frame timestamps + repetition count |
 | **Ani 2 Sheet (SWF)** | Ruffle (WASM) playback + per-frame canvas capture, or serverless FFDec | Hard | Treat as a **spike**, not a commitment |
 | **JPGA Bitmap** | JS encode/decode with `createImageBitmap(..., {premultiplyAlpha:'none'})`; blur via canvas filter or WASM | Easy | Watch for premultiplication; keep it as an optional tool |
@@ -218,8 +219,8 @@ The biggest risk in this port is **silent pixel differences**. Mitigate with fix
 |---|---|---|
 | **0 — Shell** | Vite + React + TS, tool registry, droplet rail, schema-driven settings, local persistence, drop/paste plumbing, output layer (folder handle + ZIP) | **Done** |
 | **1 — MVP** | **Pack Sprites** (trim, padding, power-of-two, dedupe, Phaser/Unity/Godot/CSS/text metadata), **Slice Sprites**, **List Files** | **Done** |
-| **2 — Content tools** | Ani 2 Sheet (GIF only), Extract Tiles, Sprite Hull + polygon export | **Done** |
-| **3 — Polish** | Multi-page atlases, batch queue UI, baseline alignment for slicing, a11y, golden-image fixtures | Next |
+| **2 — Content tools** | Ani 2 Sheet (GIF only), Extract Tiles, Sprite Hull + polygon export, **Bitmap Font** | **Done** |
+| **3 — Polish** | Multi-page atlases, batch queue UI, bitmap-font kerning editor + bearings, a11y, golden-image fixtures | Next |
 | **Distribution** | GitHub Pages workflow + Cloudflare Pages (`shoebox.lacgame.com`) | **Done** |
 | **Dropped** | SWF (any form), collaboration/share folder, JPGA, Mac↔PC paths, UiToolkit fix, FlickrWP, Code Inspect, shareable preset links | Out of scope |
 
