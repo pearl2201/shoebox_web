@@ -26,7 +26,7 @@ The legacy ActionScript source lives in `shoebox_as/` as a reference submodule.
 | Host | URL |
 |---|---|
 | Cloudflare Pages (primary) | `https://shoebox.lacgame.com` |
-| GitHub Pages (mirror) | `https://<github-user>.github.io/<repo>/` |
+| GitHub Pages (mirror) | https://pearl2201.github.io/shoebox_web/ |
 
 Both are produced from the same `dist/` build — assets use a relative base, so no per-host config is
 needed. Setup and DNS steps: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).

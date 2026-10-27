@@ -25,6 +25,11 @@ Setup:
 3. Push again (or run the workflow) — the site appears at
    `https://<user>.github.io/<repo>/`.
 
+For this repository that is **https://pearl2201.github.io/shoebox_web/**.
+
+The workflow calls `actions/configure-pages` with `enablement: true`, so the first successful run can
+switch Pages on for you (the `pages: write` permission is already granted).
+
 Notes:
 
 * The workflow checks out with `submodules: false`; the `shoebox_as/` reference submodule is not
