@@ -27,8 +27,14 @@ Setup:
 
 For this repository that is **https://pearl2201.github.io/shoebox_web/**.
 
-The workflow calls `actions/configure-pages` with `enablement: true`, so the first successful run can
-switch Pages on for you (the `pages: write` permission is already granted).
+The workflow calls `actions/configure-pages` with `enablement: true`, but the default `GITHUB_TOKEN`
+**cannot create the Pages site** (`Resource not accessible by integration`). A repository admin must
+enable Pages once:
+
+> **Settings → Pages → Build and deployment → Source: GitHub Actions**
+
+After that, re-run the workflow (**Actions → Deploy to GitHub Pages → Re-run all jobs**) or push a
+commit. The site will be available at `https://pearl2201.github.io/shoebox_web/`.
 
 Notes:
 
@@ -112,3 +118,16 @@ GitHub Pages ignores `_headers`; the file is simply published alongside the stat
    * save to a chosen folder and via ZIP download.
 4. Push to `main` → GitHub Pages workflow runs, Cloudflare Pages builds both preview and production.
 5. Verify both URLs load with assets (check the Network tab for `./assets/...` requests).
+
+---
+
+## 5. Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `HttpError: Resource not accessible by integration` in *Configure Pages* | Pages is not enabled yet. **Settings → Pages → Source: GitHub Actions**, then re-run the job. |
+| GitHub Pages shows the README instead of the app | Pages source is still “Deploy from a branch”. Switch it to “GitHub Actions”. |
+| Blank page on a sub-path | Keep the Vite base relative (`base: './'`). Absolute `/assets/...` breaks project pages. |
+| Cloudflare build fails on Node APIs | Add `NODE_VERSION=22` to the Pages environment variables. |
+| Custom domain stuck on “Verifying” | Check the `CNAME shoebox → shoebox.pages.dev` record and that the zone is active. |
+| `wrangler` uploads nothing | Build first (`npm run build`) and point it at `dist`. |
