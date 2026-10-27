@@ -14,7 +14,7 @@ Working build with all seven scoped tools.
 
 | Tool | State |
 |---|---|
-| **Pack Sprites** | Implemented — trim, padding, power-of-two, duplicate merge, Phaser / Unity-TexturePacker / Godot / CSS / text metadata |
+| **Pack Sprites** | Implemented — trim, padding, power-of-two, duplicate merge, multi-page atlases, Phaser / Unity-TexturePacker / Godot / CSS / text metadata |
 | **Slice Sprites** | Implemented — alpha blob detection, contained-blob merge, PNG export, JSON manifest |
 | **Bitmap Font** | Implemented — glyph slicing, vertical part merging, per-row baseline detection, BMFont text/XML/JSON + live text preview ([details](docs/BITMAP_FONT.md)) |
 | **Ani 2 Sheet** | Implemented — animated GIF → spritesheet or frame sequence, shared alpha trim, frame timing metadata |
@@ -59,6 +59,21 @@ npm run build    # type-check + production build
 * If the browser supports the File System Access API, pick an output folder once and results are
   written straight into it.
 * Otherwise — or if permission is denied — results are downloaded (single file or ZIP).
+
+### Multi-page atlases
+
+Enable **Split into pages** in Pack Sprites and a set that cannot fit in one sheet continues on
+`atlas-2.png`, `atlas-3.png`, … Each page is packed exactly like a single-atlas run (trim, padding,
+duplicate merge), and pages are filled largest-sprite-first so they stay balanced.
+
+Metadata follows the format:
+
+| Format | Behaviour with more than one page |
+|---|---|
+| Phaser 3 | one file with a `textures` array — load it with `this.load.multiatlas('atlas', 'atlas.json', 'assets/')` |
+| Unity / TexturePacker, Godot, CSS, text | one metadata file per page (`atlas.json`, `atlas-2.json`, …), each pointing at its own image |
+
+A sprite larger than **Max sheet size** is reported instead of being silently dropped.
 
 ### Settings & presets
 

@@ -220,7 +220,7 @@ The biggest risk in this port is **silent pixel differences**. Mitigate with fix
 | **0 — Shell** | Vite + React + TS, tool registry, droplet rail, schema-driven settings, local persistence, drop/paste plumbing, output layer (folder handle + ZIP) | **Done** |
 | **1 — MVP** | **Pack Sprites** (trim, padding, power-of-two, dedupe, Phaser/Unity/Godot/CSS/text metadata), **Slice Sprites**, **List Files** | **Done** |
 | **2 — Content tools** | Ani 2 Sheet (GIF only), Extract Tiles, Sprite Hull + polygon export, **Bitmap Font** | **Done** |
-| **3 — Polish** | Multi-page atlases, batch queue UI, bitmap-font kerning editor + bearings, a11y, golden-image fixtures | Next |
+| **3 — Polish** | Multi-page atlases (**done**), bitmap-font kerning editor + bearings, batch queue UI, a11y, golden-image fixtures | In progress |
 | **Distribution** | GitHub Pages workflow + Cloudflare Pages (`shoebox.lacgame.com`) | **Done** |
 | **Dropped** | SWF (any form), collaboration/share folder, JPGA, Mac↔PC paths, UiToolkit fix, FlickrWP, Code Inspect, shareable preset links | Out of scope |
 
@@ -230,6 +230,10 @@ The biggest risk in this port is **silent pixel differences**. Mitigate with fix
   `src/styles.css`). Swap later if the UI grows.
 * Image work runs on the main thread today behind a `run(files, settings, ctx)` async contract — moving
   it into workers is a local change (`OffscreenCanvas` + Comlink) when profiling needs it.
+* Multi-page packing lives in `src/core/packer.ts#packPages`: it binary-searches the largest prefix of
+  the largest-first item order that still fits, packs that as a page and continues with the rest, so a
+  one-page result is byte-identical to `pack()`. Phaser gets one `textures[]` file; other formats get
+  one metadata file per page.
 * Metadata formats implemented: Phaser 3 hash, Unity/TexturePacker array, Godot JSON regions, CSS, text.
 * Duplicate detection is **exact-pixel equality** (legacy used ≥ 99 % similarity). Tolerance can be added
   behind a setting later if needed.

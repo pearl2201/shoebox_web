@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pack, tryPack, type PackItem } from './packer';
+import { pack, packPages, tryPack, type PackItem } from './packer';
 
 function item(id: string, width: number, height: number, sourceIndex: number): PackItem {
   return { id, width, height, sourceIndex };
@@ -99,5 +99,65 @@ describe('pack', () => {
 
   it('refuses to pack an empty list', () => {
     expect(() => pack([], { padding: 0, powerOfTwo: true, maxSize: 256 })).toThrow();
+  });
+});
+
+describe('packPages', () => {
+  it('keeps everything on one page when it fits', () => {
+    const items = [item('a', 64, 64, 0), item('b', 32, 32, 1)];
+    const options = { padding: 2, powerOfTwo: true, maxSize: 1024 };
+
+    const pages = packPages(items, options);
+
+    expect(pages).toHaveLength(1);
+    expect(pages[0].index).toBe(0);
+    expect(pages[0]).toEqual({ ...pack(items, options), index: 0 });
+  });
+
+  it('spills onto another page when the sheet limit is reached', () => {
+    // 8 sprites of 100×100 with padding 0 need a 400px square; the limit is 256.
+    const items = Array.from({ length: 8 }, (_, index) => item(`s${index}`, 100, 100, index));
+    const options = { padding: 0, powerOfTwo: true, maxSize: 256 };
+
+    const pages = packPages(items, options);
+
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      expect(Math.max(page.width, page.height)).toBeLessThanOrEqual(256);
+    }
+  });
+
+  it('places every sprite exactly once across all pages', () => {
+    const items = Array.from({ length: 10 }, (_, index) =>
+      item(`s${index}`, 60 + index * 4, 40 + index * 2, index),
+    );
+    const pages = packPages(items, { padding: 2, powerOfTwo: true, maxSize: 256 });
+
+    const placed = pages.flatMap((page) => page.items.map((entry) => entry.sourceIndex));
+    expect(placed).toHaveLength(items.length);
+    expect(new Set(placed).size).toBe(items.length);
+    expect(new Set(placed)).toEqual(new Set(items.map((entry) => entry.sourceIndex)));
+  });
+
+  it('keeps sprites inside their page', () => {
+    const items = Array.from({ length: 6 }, (_, index) => item(`s${index}`, 90, 70, index));
+    const pages = packPages(items, { padding: 4, powerOfTwo: false, maxSize: 300 });
+
+    for (const page of pages) {
+      for (const entry of page.items) {
+        expect(entry.x + entry.width).toBeLessThanOrEqual(page.width);
+        expect(entry.y + entry.height).toBeLessThanOrEqual(page.height);
+      }
+    }
+  });
+
+  it('reports a sprite that cannot fit at all', () => {
+    expect(() =>
+      packPages([item('big', 400, 400, 0)], { padding: 0, powerOfTwo: true, maxSize: 256 }),
+    ).toThrow(/cannot fit/i);
+  });
+
+  it('returns no pages for an empty list', () => {
+    expect(packPages([], { padding: 0, powerOfTwo: true, maxSize: 256 })).toEqual([]);
   });
 });

@@ -18,6 +18,17 @@ export function uniqueName(base: string, used: Map<string, number>): string {
   return count === 0 ? base : `${base}_${count + 1}`;
 }
 
+/**
+ * Page file name for multi-page outputs: `atlas.png` → `atlas.png`, `atlas-2.png`, `atlas-3.png`, …
+ * The extension is preserved so the metadata file can point at the right image.
+ */
+export function pageFileName(fileName: string, pageIndex: number): string {
+  if (pageIndex === 0) return fileName;
+  const dot = fileName.lastIndexOf('.');
+  if (dot <= 0) return `${fileName}-${pageIndex + 1}`;
+  return `${fileName.slice(0, dot)}-${pageIndex + 1}${fileName.slice(dot)}`;
+}
+
 /** Timestamped file name for images pasted from the clipboard. */
 export function clipboardFileName(mimeType: string, index = 0): string {
   const extension =

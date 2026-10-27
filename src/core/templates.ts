@@ -12,6 +12,12 @@ export interface AtlasInfo {
   image: string;
 }
 
+/** One page of a multi-page atlas. */
+export interface AtlasPageInfo {
+  frames: FrameEntry[];
+  atlas: AtlasInfo;
+}
+
 export type MetadataFormat = 'phaser' | 'texturepacker' | 'godot' | 'css' | 'text' | 'none';
 
 export const METADATA_FORMATS: { value: MetadataFormat; label: string }[] = [
@@ -106,6 +112,37 @@ function godotAtlas(frames: FrameEntry[], atlas: AtlasInfo) {
         id: frame.id,
         region: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
       })),
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * Phaser 3 multi-atlas JSON — a single file that spans several page images,
+ * loaded with `this.load.multiatlas('key', 'atlas.json', 'assets/')`.
+ */
+export function buildPhaserMultiAtlas(pages: AtlasPageInfo[]): string {
+  return JSON.stringify(
+    {
+      textures: pages.map((page) => ({
+        image: page.atlas.image,
+        size: { w: page.atlas.width, h: page.atlas.height },
+        frames: page.frames.map((frame) => ({
+          filename: frame.id,
+          frame: { x: frame.x, y: frame.y, w: frame.width, h: frame.height },
+          rotated: false,
+          trimmed: false,
+          spriteSourceSize: { x: 0, y: 0, w: frame.width, h: frame.height },
+          sourceSize: { w: frame.width, h: frame.height },
+        })),
+      })),
+      meta: {
+        app: 'ShoeBox Web',
+        version: '1.0',
+        format: 'RGBA8888',
+        scale: '1',
+      },
     },
     null,
     2,

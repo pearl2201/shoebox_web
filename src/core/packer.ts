@@ -179,3 +179,91 @@ export function pack(items: PackItem[], options: PackOptions): PackResult {
 
   return { width: usedWidth, height: usedHeight, items: finalItems };
 }
+
+/**
+ * Pages produced by `packPages`: each one is a complete sheet.
+ */
+export interface PackPage extends PackResult {
+  index: number;
+}
+
+const MAX_PAGES = 64;
+
+/**
+ * Packs a set that does not have to fit on a single sheet.
+ *
+ * Items are consumed largest-first and every page is packed exactly like
+ * `pack()` would pack it, so a single page result is identical to calling
+ * `pack()` directly. When the remaining sprites no longer fit in `maxSize`,
+ * the largest prefix that still fits becomes a page and the rest continue on
+ * the next one.
+ */
+export function packPages(items: PackItem[], options: PackOptions): PackPage[] {
+  if (items.length === 0) return [];
+
+  const oversized = items.find(
+    (item) => item.width > options.maxSize || item.height > options.maxSize,
+  );
+  if (oversized) {
+    throw new Error(
+      `“${oversized.id}” is ${oversized.width}×${oversized.height}px and cannot fit in a ${options.maxSize}px sheet. Raise the limit or scale the sprite down.`,
+    );
+  }
+
+  // Largest area first keeps page fill even and mirrors `sortForPacking()`.
+  const remaining = [...items].sort((a, b) => {
+    const byArea = b.width * b.height - a.width * a.height;
+    return byArea !== 0 ? byArea : a.id.localeCompare(b.id);
+  });
+
+  const pages: PackPage[] = [];
+
+  while (remaining.length > 0) {
+    if (pages.length >= MAX_PAGES) {
+      throw new Error(`Sprites need more than ${MAX_PAGES} pages. Split the set or raise the sheet size.`);
+    }
+
+    const count = largestFittingPrefix(remaining, options);
+    if (count === 0) {
+      throw new Error(
+        `“${remaining[0].id}” does not fit in a ${options.maxSize}px sheet. Raise the limit or scale the sprite down.`,
+      );
+    }
+
+    const page = pack(remaining.slice(0, count), options);
+    pages.push({ ...page, index: pages.length });
+    remaining.splice(0, count);
+  }
+
+  return pages;
+}
+
+/**
+ * Longest prefix of `items` that still packs into one sheet. `pack()` is
+ * monotone in the item count, so a binary search is safe.
+ */
+function largestFittingPrefix(items: PackItem[], options: PackOptions): number {
+  let low = 1;
+  let high = items.length;
+  let best = 0;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    let fits = true;
+    try {
+      pack(items.slice(0, mid), options);
+    } catch {
+      fits = false;
+    }
+
+    if (fits) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return best;
+}
+

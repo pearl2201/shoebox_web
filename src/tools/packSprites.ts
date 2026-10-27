@@ -1,16 +1,18 @@
 import { alphaBounds, cropPixels, fullRect, hashPixels, pixelsEqual, type Rect } from '../core/alpha';
-import { pack, type PackItem } from '../core/packer';
+import { pack, packPages, type PackItem, type PackPage } from '../core/packer';
 import {
   buildMetadata,
+  buildPhaserMultiAtlas,
   METADATA_FORMATS,
   metadataExtension,
+  type AtlasPageInfo,
   type FrameEntry,
   type MetadataFormat,
 } from '../core/templates';
 import { canvasToBlob, createCanvas, decodeImage, releaseImage, type DecodedImage } from '../lib/image';
-import { baseName, sanitizeFileName, uniqueName } from '../lib/names';
+import { baseName, pageFileName, sanitizeFileName, uniqueName } from '../lib/names';
 import { bool, num, str } from './settings';
-import type { Settings, ToolDef } from './types';
+import type { OutputFile, Settings, ToolDef } from './types';
 
 interface LoadedImage {
   file: string;
@@ -66,6 +68,12 @@ export const packSprites: ToolDef = {
       help: 'Upper bound for width and height.',
     },
     {
+      key: 'multiPage',
+      label: 'Split into pages',
+      type: 'boolean',
+      help: 'When the sprites do not fit in one sheet, continue on atlas-2, atlas-3, …',
+    },
+    {
       key: 'fileName',
       label: 'Atlas file name',
       type: 'text',
@@ -84,6 +92,7 @@ export const packSprites: ToolDef = {
     dedupe: true,
     powerOfTwo: true,
     maxSize: 4096,
+    multiPage: false,
     fileName: 'atlas.png',
     metadata: 'phaser',
   },
@@ -94,6 +103,7 @@ export const packSprites: ToolDef = {
     const dedupe = bool(settings, 'dedupe', true);
     const powerOfTwo = bool(settings, 'powerOfTwo', true);
     const maxSize = Math.max(32, Math.round(num(settings, 'maxSize', 4096)));
+    const multiPage = bool(settings, 'multiPage', false);
     const fileName = sanitizeFileName(str(settings, 'fileName', 'atlas.png'), 'atlas.png');
     const metadataFormat = str(settings, 'metadata', 'phaser') as MetadataFormat;
 
@@ -169,7 +179,7 @@ export const packSprites: ToolDef = {
     }
 
     // ---- pack ----------------------------------------------------------------
-    ctx.progress('Packing…');
+    ctx.progress(multiPage ? 'Packing pages…' : 'Packing…');
 
     const items: PackItem[] = unique.map((image, sourceIndex) => ({
       id: image.packId,
@@ -178,78 +188,138 @@ export const packSprites: ToolDef = {
       height: image.bounds.height,
     }));
 
-    const packed = pack(items, { padding, powerOfTwo, maxSize });
+    const packOptions = { padding, powerOfTwo, maxSize };
+    const pages: PackPage[] = multiPage
+      ? packPages(items, packOptions)
+      : [{ ...pack(items, packOptions), index: 0 }];
 
-    // ---- render --------------------------------------------------------------
-    ctx.progress('Rendering atlas…');
-    const { canvas, ctx: context } = createCanvas(packed.width, packed.height);
-    context.imageSmoothingEnabled = false;
-
-    for (const item of packed.items) {
-      const image = unique[item.sourceIndex];
-      context.drawImage(
-        image.decoded.bitmap,
-        image.bounds.x,
-        image.bounds.y,
-        image.bounds.width,
-        image.bounds.height,
-        item.x,
-        item.y,
-        image.bounds.width,
-        image.bounds.height,
-      );
+    // Unique sprite index → the page and position it ended up on.
+    const regions = new Map<number, { page: number; x: number; y: number }>();
+    for (const page of pages) {
+      for (const item of page.items) {
+        regions.set(item.sourceIndex, { page: page.index, x: item.x, y: item.y });
+      }
     }
 
-    const atlasBlob = await canvasToBlob(canvas, 'image/png');
+    // ---- render --------------------------------------------------------------
+    const imageFiles: OutputFile[] = [];
+    const pageBlobs: Blob[] = [];
+
+    for (const page of pages) {
+      ctx.progress(
+        pages.length > 1
+          ? `Rendering page ${page.index + 1} / ${pages.length}…`
+          : 'Rendering atlas…',
+      );
+
+      const { canvas, ctx: context } = createCanvas(page.width, page.height);
+      context.imageSmoothingEnabled = false;
+
+      for (const item of page.items) {
+        const image = unique[item.sourceIndex];
+        context.drawImage(
+          image.decoded.bitmap,
+          image.bounds.x,
+          image.bounds.y,
+          image.bounds.width,
+          image.bounds.height,
+          item.x,
+          item.y,
+          image.bounds.width,
+          image.bounds.height,
+        );
+      }
+
+      const blob = await canvasToBlob(canvas, 'image/png');
+      pageBlobs.push(blob);
+      imageFiles.push({ name: pageFileName(fileName, page.index), blob });
+    }
 
     // ---- metadata ------------------------------------------------------------
     const usedEntryIds = new Map<string, number>();
     const entryIds = images.map((image) => uniqueName(image.id, usedEntryIds));
 
-    const frames: FrameEntry[] = images.map((image, index) => {
-      const item = packed.items.find(
-        (candidate) => candidate.sourceIndex === uniqueIndexForInput[index],
-      );
-      if (!item) throw new Error(`Missing atlas region for “${image.file}”.`);
-      return {
+    const framesPerPage: FrameEntry[][] = pages.map(() => []);
+
+    images.forEach((image, index) => {
+      const region = regions.get(uniqueIndexForInput[index]);
+      if (!region) throw new Error(`Missing atlas region for “${image.file}”.`);
+      framesPerPage[region.page].push({
         id: entryIds[index],
-        x: item.x,
-        y: item.y,
+        x: region.x,
+        y: region.y,
         width: image.bounds.width,
         height: image.bounds.height,
-      };
+      });
     });
 
-    frames.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    for (const frames of framesPerPage) {
+      frames.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    }
 
-    const metadataText =
-      metadataFormat === 'none'
-        ? undefined
-        : buildMetadata(metadataFormat, frames, {
-            width: packed.width,
-            height: packed.height,
-            image: fileName,
+    const metadataFiles: OutputFile[] = [];
+    let metadataText: string | undefined;
+    const metadataBase = fileName.replace(/\.[^.]+$/, '');
+
+    if (metadataFormat !== 'none') {
+      const extension = metadataExtension(metadataFormat);
+      const pageInfos: AtlasPageInfo[] = pages.map((page, index) => ({
+        frames: framesPerPage[index],
+        atlas: {
+          width: page.width,
+          height: page.height,
+          image: pageFileName(fileName, index),
+        },
+      }));
+
+      if (pages.length > 1 && metadataFormat === 'phaser') {
+        // One multi-atlas file describes every page.
+        metadataText = buildPhaserMultiAtlas(pageInfos);
+        metadataFiles.push({
+          name: `${metadataBase}.${extension}`,
+          blob: new Blob([metadataText], { type: 'text/plain' }),
+        });
+      } else {
+        const texts = pageInfos.map((page) =>
+          buildMetadata(metadataFormat, page.frames, page.atlas),
+        );
+
+        pageInfos.forEach((_, index) => {
+          metadataFiles.push({
+            name: `${pageFileName(metadataBase, index)}.${extension}`,
+            blob: new Blob([texts[index]], { type: 'text/plain' }),
           });
+        });
 
-    const outputs = [
-      { name: fileName, blob: atlasBlob },
-      ...(metadataText
-        ? [
-            {
-              name: `${fileName.replace(/\.[^.]+$/, '')}.${metadataExtension(metadataFormat)}`,
-              blob: new Blob([metadataText], { type: 'text/plain' }),
-            },
-          ]
-        : []),
-    ];
+        metadataText = texts[0];
+      }
+    }
+
+    const outputs = [...imageFiles, ...metadataFiles];
 
     for (const image of images) releaseImage(image.decoded);
 
     if (duplicates > 0) {
       notes.push(`${duplicates} duplicate sprite${duplicates === 1 ? '' : 's'} merged.`);
     }
-    if (packed.items.length < images.length) {
-      notes.push(`${images.length} files packed into ${packed.items.length} unique regions.`);
+
+    const regionCount = pages.reduce((total, page) => total + page.items.length, 0);
+    if (regionCount < images.length) {
+      notes.push(`${images.length} files packed into ${regionCount} unique regions.`);
+    }
+    if (pages.length > 1) {
+      notes.push(
+        `Sprites did not fit in one sheet — split into ${pages.length} pages: ${pages
+          .map(
+            (page) =>
+              `${pageFileName(fileName, page.index)} (${page.width}×${page.height})`,
+          )
+          .join(', ')}.`,
+      );
+      if (metadataFormat !== 'none' && metadataFormat !== 'phaser') {
+        notes.push('One metadata file was written per page.');
+      }
+      notes.push('The preview shows page 1.');
     }
 
     return {
@@ -257,11 +327,15 @@ export const packSprites: ToolDef = {
       text: metadataText,
       textLabel: metadataText ? 'Metadata preview' : undefined,
       preview: {
-        url: URL.createObjectURL(atlasBlob),
-        width: packed.width,
-        height: packed.height,
+        url: URL.createObjectURL(pageBlobs[0]),
+        width: pages[0].width,
+        height: pages[0].height,
       },
-      summary: `${frames.length} sprite${frames.length === 1 ? '' : 's'} in ${packed.items.length} region${packed.items.length === 1 ? '' : 's'}`,
+      summary: `${framesPerPage.reduce((total, frames) => total + frames.length, 0)} sprite${
+        images.length === 1 ? '' : 's'
+      } in ${regionCount} region${regionCount === 1 ? '' : 's'}${
+        pages.length > 1 ? ` across ${pages.length} pages` : ''
+      }`,
       notes,
     };
   },
